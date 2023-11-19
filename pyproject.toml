@@ -2,7 +2,7 @@
 name = "clipper"
 version = "0.1.0"
 description = ""
-authors = ["zyf722 <1124982772@qq.com>"]
+authors = ["MaxMixAlex <MaxMixAlex@protonmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
