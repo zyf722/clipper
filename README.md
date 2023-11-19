@@ -6,7 +6,9 @@ Clipper is a simple [TUI-based](https://github.com/Textualize/textual) Python ap
 ![Screenshot](https://s2.loli.net/2023/11/19/oP6zq54gbtv7J9Q.png)
 
 ## Installation & Usage
-This project is managed by [Poetry](https://python-poetry.org/). To install, run the following commands:
+This project is managed by [Poetry](https://python-poetry.org/).
+
+To install, run the following commands after cloning the repository:
 
 ```bash
 poetry lock
