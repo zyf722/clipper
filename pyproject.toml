@@ -14,7 +14,6 @@ requests = "^2.31.0"
 
 [tool.poetry.scripts]
 clipper = "clipper.__init__:main"
-repro = "clipper.repro:main"
 
 
 [tool.poetry.group.dev.dependencies]
