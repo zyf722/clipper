@@ -58,6 +58,7 @@ class ClipperApp(App):
                 Button("Load", id="load", variant="primary"),
                 Button("Copy", id="copy", variant="primary"),
                 Button("Translate", id="translate", variant="primary"),
+                Button("Copy Translation", id="copy-translation", variant="primary"),
                 classes="buttons",
             ),
             Horizontal(
@@ -107,6 +108,19 @@ class ClipperApp(App):
         footer.update(" Copying to clipboard...")
         try:
             pyperclip.copy(self.cliptext)
+            footer.update(" Copied to clipboard")
+        except Exception:
+            footer.styles.background = "red"
+            footer.update(" Error copying to clipboard")
+
+    @on(Button.Pressed, "#copy-translation")
+    def copy_translation_to_clipboard(self, event: Button.Pressed) -> None:
+        footer: Static = self.query_one("#footer")
+
+        footer.styles.background = "dodgerblue"
+        footer.update(" Copying to clipboard...")
+        try:
+            pyperclip.copy(self.translation_text)
             footer.update(" Copied to clipboard")
         except Exception:
             footer.styles.background = "red"
@@ -185,6 +199,7 @@ class ClipperApp(App):
                     footer.update(f" Error translating: {e}")
                     return
 
+            self.translation_text = result
             translation.update(Text(result))
             footer.update(" Translation complete")
 
