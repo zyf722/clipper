@@ -1,17 +1,19 @@
 import hashlib
 import json
 import random
+import re
 import time
 
-import pyperclip
+import pyperclip  # type: ignore
 import requests
 from rich.text import Text
 from rich.traceback import Traceback
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.reactive import var
 from textual.widgets import Button, Header, Rule, Static
+
+DELIMITERS = ("•", "⚫", "➢")
 
 
 class ClipperApp(App):
@@ -49,8 +51,6 @@ class ClipperApp(App):
     }
     """
 
-    cliptext = var("")
-
     def compose(self) -> ComposeResult:
         yield Vertical(
             Header(),
@@ -81,18 +81,22 @@ class ClipperApp(App):
 
     def on_mount(self) -> None:
         self.title = "Clipper"
-
         self.config = json.load(open("config.json"))
+        self.newline_re = re.compile("(\r)*\n(?![" + "".join(DELIMITERS) + "])")
+        self.translation_text = ""
+        self.cliptext = ""
 
     @on(Button.Pressed, "#load")
     def load_clipboard(self, event: Button.Pressed) -> None:
-        text: Static = self.query_one("#text")
-        footer: Static = self.query_one("#footer")
+        text: Static = self.query_one("#text")  # type: ignore
+        footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
         footer.update(" Processing clipboard data...")
         try:
-            self.cliptext = pyperclip.paste().replace("\r\n", " ")
+            # Remove newlines, except for those before sepecial characters
+            self.cliptext = self.newline_re.sub(" ", pyperclip.paste().strip())
+
             text.update(Text(self.cliptext))
             footer.update(" Clipboard data loaded")
         except Exception:
@@ -102,7 +106,7 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#copy")
     def copy_clipboard(self, event: Button.Pressed) -> None:
-        footer: Static = self.query_one("#footer")
+        footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
         footer.update(" Copying to clipboard...")
@@ -115,7 +119,7 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#copy-translation")
     def copy_translation_to_clipboard(self, event: Button.Pressed) -> None:
-        footer: Static = self.query_one("#footer")
+        footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
         footer.update(" Copying to clipboard...")
@@ -128,8 +132,8 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#translate")
     def translate_text(self, event: Button.Pressed) -> None:
-        translation: Static = self.query_one("#translation")
-        footer: Static = self.query_one("#footer")
+        translation: Static = self.query_one("#translation")  # type: ignore
+        footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
         footer.update(" Translating...")
@@ -178,7 +182,9 @@ class ClipperApp(App):
                     if response.status_code == 200:
                         chunk_result = response.json()
                         if "trans_result" in chunk_result:
-                            chunk_translation = chunk_result["trans_result"][0]["dst"]
+                            chunk_translation = ""
+                            for res in chunk_result["trans_result"]:
+                                chunk_translation += f"{res['dst']}\n"
                             result += chunk_translation
                             if i < len(chunks) - 1 and i % 10 == 9:
                                 time.sleep(0.2)
@@ -218,3 +224,7 @@ class ClipperApp(App):
 def main():
     app = ClipperApp()
     app.run()
+
+
+if __name__ == "__main__":
+    main()
