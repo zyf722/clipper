@@ -68,6 +68,11 @@ class ClipperApp(App):
                     id="load-copy-translate",
                     variant="success",
                 ),
+                Button(
+                    "Load, Translate & Copy Translation",
+                    id="load-translate-copy-translation",
+                    variant="success",
+                ),
                 classes="buttons",
             ),
             Vertical(
@@ -219,6 +224,12 @@ class ClipperApp(App):
         self.load_clipboard(event)
         self.copy_clipboard(event)
         self.translate_text(event)
+
+    @on(Button.Pressed, "#load-translate-copy-translation")
+    def load_translate_copy_translation_clipboard(self, event: Button.Pressed) -> None:
+        self.load_clipboard(event)
+        self.translate_text(event)
+        self.copy_translation_to_clipboard(event)
 
 
 def main():
