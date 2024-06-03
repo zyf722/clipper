@@ -1,5 +1,5 @@
 # clipper
-Originally made for paper-reading purpose, Clipper is a simple [TUI-based](https://github.com/Textualize/textual) Python app to extract text from clipboard and translate it using extensible translation services, with custom regex pre- and post-processing support.
+Originally made for essay-reading purpose (now you can also utilize it to get texts in slides translated), clipper is a simple [TUI-based](https://github.com/Textualize/textual) Python app to extract text from clipboard and translate it using extensible translation services, with custom RegEx pre- and post-processing support.
 
 [Baidu Translate API](https://fanyi-api.baidu.com/) is provided as a built-in translation service.
 
@@ -40,6 +40,28 @@ To add a custom translation API, you need to extend the `BaseTranslationAPI` cla
 Then, you can add the new API to `create_api` method in [`clipper/api/__init__.py`](./clipper/api/__init__.py).
 
 Finally, set `api` in your config file to the name of your newly-added API - make sure the name is the same as parameter `type` in `create_api`.
+
+### RegEx Pre- and Post-Processing
+Clipper supports custom RegEx pre- and post-processing. You can add your own RegEx and replacement in `processor.input` and `processor.output` in the config file.
+
+For example, to keep list structure in PDF slides and convert it to Markdown style, you can add the following to `config.json`:
+
+```json
+"processor.input": [
+    {
+        "regex": "(\r)*\n(?![•⚫➢])",
+        "replace": " "
+    }
+],
+"processor.output": [
+    {
+        "regex": "(^|\n)[•⚫➢] ",
+        "replace": "\\2- "
+    }
+]
+```
+
+This will replace all line breaks not followed by `•`, `⚫`, or `➢` with a space, and replace all `•`, `⚫`, or `➢` followed by a space with `- `.
 
 ## License
 [AGPLv3](./LICENSE)
