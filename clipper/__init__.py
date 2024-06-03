@@ -11,6 +11,8 @@ from textual.widgets import Button, Header, Rule, Static
 
 from clipper.api import create_api
 
+VERSION = "v0.2.0"
+
 
 class ClipperApp(App):
     CSS = """
@@ -81,16 +83,26 @@ class ClipperApp(App):
         )
 
     def on_mount(self) -> None:
+        self.title = f"Clipper {VERSION}"
+        self.config = json.load(open("config.json", "r", encoding="utf-8"))
         self.api = create_api(
             self.config["api"],
             self.config["api.appid"],
             self.config["api.appkey"],
         )
+        self.input_re = [
+            (re.compile(f"({processor['regex']})"), processor["replace"])
+            for processor in self.config["processor.input"]
+        ]
+        self.output_re = [
+            (re.compile(f"({processor['regex']})"), processor["replace"])
+            for processor in self.config["processor.output"]
+        ]
         self.translation_text = ""
         self.cliptext = ""
 
     @on(Button.Pressed, "#load")
-    def load_clipboard(self, event: Button.Pressed) -> None:
+    def load_clipboard(self, _: Button.Pressed) -> None:
         text: Static = self.query_one("#text")  # type: ignore
         footer: Static = self.query_one("#footer")  # type: ignore
 
@@ -98,7 +110,9 @@ class ClipperApp(App):
         footer.update(" Processing clipboard data...")
         try:
             # Remove newlines, except for those before sepecial characters
-            self.cliptext = self.newline_re.sub(" ", pyperclip.paste().strip())
+            self.cliptext = pyperclip.paste().strip()
+            for regex, repl in self.input_re:
+                self.cliptext = regex.sub(repl, self.cliptext)
 
             text.update(Text(self.cliptext))
             footer.update(" Clipboard data loaded")
@@ -108,7 +122,7 @@ class ClipperApp(App):
             footer.update(" Error loading clipboard data")
 
     @on(Button.Pressed, "#copy")
-    def copy_clipboard(self, event: Button.Pressed) -> None:
+    def copy_clipboard(self, _: Button.Pressed) -> None:
         footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
@@ -121,7 +135,7 @@ class ClipperApp(App):
             footer.update(" Error copying to clipboard")
 
     @on(Button.Pressed, "#copy-translation")
-    def copy_translation_to_clipboard(self, event: Button.Pressed) -> None:
+    def copy_translation_to_clipboard(self, _: Button.Pressed) -> None:
         footer: Static = self.query_one("#footer")  # type: ignore
 
         footer.styles.background = "dodgerblue"
@@ -134,7 +148,7 @@ class ClipperApp(App):
             footer.update(" Error copying to clipboard")
 
     @on(Button.Pressed, "#translate")
-    def translate_text(self, event: Button.Pressed) -> None:
+    def translate_text(self, _: Button.Pressed) -> None:
         translation: Static = self.query_one("#translation")  # type: ignore
         footer: Static = self.query_one("#footer")  # type: ignore
 
