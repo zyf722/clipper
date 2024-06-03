@@ -230,12 +230,3 @@ class ClipperApp(App):
         self.load_clipboard(event)
         self.translate_text(event)
         self.copy_translation_to_clipboard(event)
-
-
-def main():
-    app = ClipperApp()
-    app.run()
-
-
-if __name__ == "__main__":
-    main()

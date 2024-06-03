@@ -13,7 +13,7 @@ textual-dev = "^1.2.1"
 requests = "^2.31.0"
 
 [tool.poetry.scripts]
-clipper = "clipper.__init__:main"
+clipper = "clipper.__main__:main"
 
 
 [tool.poetry.group.dev.dependencies]
