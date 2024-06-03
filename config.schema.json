@@ -1,0 +1,80 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+        "api": {
+            "type": "string",
+            "anyOf": [
+                {
+                    "enum": ["baidu"]
+                }
+            ],
+            "description": "The translation API to use. Currently only 'baidu' is supported."
+        },
+        "api.appid": {
+            "$ref": "#/definitions/non-empty-string",
+            "description": "The appid for the translation API."
+        },
+        "api.appkey": {
+            "$ref": "#/definitions/non-empty-string",
+            "description": "The appkey for the translation API."
+        },
+        "api.originalLang": {
+            "type": "string",
+            "description": "The language code to translate from."
+        },
+        "api.targetLang": {
+            "type": "string",
+            "description": "The language code to translate to."
+        },
+        "processor.input": {
+            "type": "array",
+            "items": [
+                {
+                    "$ref": "#/definitions/regex"
+                }
+            ],
+            "description": "A list of regex patterns to match and replace in the input text.\n\nThe regex patterns are applied in the order they are defined in the list."
+        },
+        "processor.output": {
+            "type": "array",
+            "items": [
+                {
+                    "$ref": "#/definitions/regex"
+                }
+            ],
+            "description": "A list of regex patterns to match and replace in the output text.\n\nThe regex patterns are applied in the order they are defined in the list."
+        }
+    },
+    "required": [
+        "api",
+        "api.appid",
+        "api.appkey",
+        "api.originalLang",
+        "api.targetLang",
+        "processor.input",
+        "processor.output"
+    ],
+    "definitions": {
+        "non-empty-string": {
+            "type": "string",
+            "minLength": 1
+        },
+        "regex": {
+            "type": "object",
+            "properties": {
+                "regex": {
+                    "type": "string",
+                    "minLength": 1,
+                    "format": "regex",
+                    "description": "A valid Python regex pattern to match."
+                },
+                "replace": {
+                    "$ref": "#/definitions/non-empty-string",
+                    "description": "The replacement string to use when the regex pattern matches."
+                }
+            },
+            "required": ["regex", "replace"]
+        }
+    }
+}
