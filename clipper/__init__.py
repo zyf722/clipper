@@ -1,11 +1,7 @@
-import hashlib
 import json
-import random
 import re
-import time
 
 import pyperclip  # type: ignore
-import requests
 from rich.text import Text
 from rich.traceback import Traceback
 from textual import on
@@ -13,7 +9,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Header, Rule, Static
 
-DELIMITERS = ("•", "⚫", "➢")
+from clipper.api import create_api
 
 
 class ClipperApp(App):
@@ -85,9 +81,11 @@ class ClipperApp(App):
         )
 
     def on_mount(self) -> None:
-        self.title = "Clipper"
-        self.config = json.load(open("config.json"))
-        self.newline_re = re.compile("(\r)*\n(?![" + "".join(DELIMITERS) + "])")
+        self.api = create_api(
+            self.config["api"],
+            self.config["api.appid"],
+            self.config["api.appkey"],
+        )
         self.translation_text = ""
         self.cliptext = ""
 
@@ -147,68 +145,19 @@ class ClipperApp(App):
             footer.update(" No text loaded yet")
             return
         else:
-            appid = self.config["appid"]
-            appkey = self.config["appkey"]
+            try:
+                result = self.api.translate(
+                    self.cliptext,
+                    self.config["api.originalLang"],
+                    self.config["api.targetLang"],
+                )
+            except Exception as e:
+                footer.styles.background = "red"
+                footer.update(str(e))
+                return
 
-            url = "https://fanyi-api.baidu.com/api/trans/vip/translate"
-            session = requests.Session()
-            session.trust_env = False
-
-            # Split text into chunks of 6000 characters or until the end of a sentence
-            chunks = []
-            chunk = ""
-            for sentence in self.cliptext.split("."):
-                if len(chunk) + len(sentence) >= 6000:
-                    chunks.append(chunk)
-                    chunk = ""
-                if chunk:
-                    chunk += "."
-                chunk += sentence
-            if chunk:
-                chunks.append(chunk)
-
-            # Translate each chunk and append to the final result
-            result = ""
-            for i, chunk in enumerate(chunks):
-                salt = str(random.randint(32768, 65536))
-                sign_str = f"{appid}{chunk}{salt}{appkey}"
-                sign = hashlib.md5(sign_str.encode()).hexdigest()
-
-                params = {
-                    "q": chunk,
-                    "from": "auto",
-                    "to": "zh",
-                    "appid": appid,
-                    "salt": salt,
-                    "sign": sign,
-                }
-                response = session.get(url, params=params)
-                try:
-                    if response.status_code == 200:
-                        chunk_result = response.json()
-                        if "trans_result" in chunk_result:
-                            chunk_translation = ""
-                            for res in chunk_result["trans_result"]:
-                                chunk_translation += f"{res['dst']}\n"
-                            result += chunk_translation
-                            if i < len(chunks) - 1 and i % 10 == 9:
-                                time.sleep(0.2)
-                        else:
-                            footer.styles.background = "red"
-                            footer.update(
-                                f" Unknown error when translating: {chunk_result}"
-                            )
-                            return
-                    else:
-                        footer.styles.background = "red"
-                        footer.update(
-                            f" HTTP status code error: {response.status_code}"
-                        )
-                        return
-                except Exception as e:
-                    footer.styles.background = "red"
-                    footer.update(f" Error translating: {e}")
-                    return
+            for regex, repl in self.output_re:
+                result = regex.sub(repl, result)
 
             self.translation_text = result
             translation.update(Text(result))
