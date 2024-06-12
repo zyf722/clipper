@@ -1,4 +1,5 @@
 import json
+import os
 import re
 
 import pyperclip  # type: ignore
@@ -8,10 +9,51 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Header, Rule, Static
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 from clipper.api import create_api
 
 VERSION = "v0.2.0"
+
+
+class ConfigHandler(PatternMatchingEventHandler):
+    """
+    A class to reload the config file when it changes.
+    """
+
+    def __init__(self, app: "ClipperApp") -> None:
+        self.app = app
+        super().__init__(patterns=["config.json"])
+
+    def on_modified(self, event) -> None:
+        footer: Static = self.app.query_one("#footer")  # type: ignore
+
+        footer.styles.background = "gold"
+        footer.update(" Reloading config file...")
+
+        try:
+            self.app.config = json.load(open("config.json", "r", encoding="utf-8"))
+            self.app.api = create_api(
+                self.app.config["api"],
+                self.app.config["api.appid"],
+                self.app.config["api.appkey"],
+            )
+            self.app.input_re = [
+                (re.compile(f"({processor['regex']})"), processor["replace"])
+                for processor in self.app.config["processor.input"]
+            ]
+            self.app.output_re = [
+                (re.compile(f"({processor['regex']})"), processor["replace"])
+                for processor in self.app.config["processor.output"]
+            ]
+        except Exception as e:
+            footer.styles.background = "red"
+            footer.update(str(e))
+            return
+
+        footer.styles.background = "dodgerblue"
+        footer.update(" Config file reloaded")
 
 
 class ClipperApp(App):
@@ -100,6 +142,11 @@ class ClipperApp(App):
         ]
         self.translation_text = ""
         self.cliptext = ""
+
+        # Watch for changes to the config file
+        self.config_observer = Observer()
+        self.config_observer.schedule(ConfigHandler(self), path=".", recursive=False)
+        self.config_observer.start()
 
     @on(Button.Pressed, "#load")
     def load_clipboard(self, _: Button.Pressed) -> None:
