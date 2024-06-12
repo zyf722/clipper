@@ -20,6 +20,8 @@ After installing dependencies, open `config.json` and fill in the necessary info
 
 The config file is validated by [json-schema](https://json-schema.org/). See [`config.schema.json`](./config.schema.json) for the schema.
 
+Hot-reloading of the config file is supported. You can modify the config file while the app is running, and it will be automatically reloaded.
+
 Then, you can run the app by:
 
 ```bash
