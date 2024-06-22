@@ -11,13 +11,9 @@
             ],
             "description": "The translation API to use."
         },
-        "api.appid": {
-            "$ref": "#/definitions/non-empty-string",
-            "description": "The appid for the translation API."
-        },
-        "api.appkey": {
-            "$ref": "#/definitions/non-empty-string",
-            "description": "The appkey for the translation API."
+        "api.secrets": {
+            "type": "object",
+            "description": "The token or other secrets required to access the translation API."
         },
         "api.originalLang": {
             "type": "string",
@@ -48,8 +44,7 @@
     },
     "required": [
         "api",
-        "api.appid",
-        "api.appkey",
+        "api.secrets",
         "api.originalLang",
         "api.targetLang",
         "processor.input",

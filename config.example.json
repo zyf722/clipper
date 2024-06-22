@@ -1,8 +1,10 @@
 {
     "$schema": "config.schema.json",
     "api": "baidu",
-    "api.appid": "<your appid here>",
-    "api.appkey": "<your appkey here>",
+    "api.secrets": {
+        "appid": "<your appid here>",
+        "appkey": "<your appkey here>"
+    },
     "api.originalLang": "auto",
     "api.targetLang": "zh",
     "processor.input": [
