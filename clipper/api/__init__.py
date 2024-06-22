@@ -1,7 +1,11 @@
-from typing import Dict, Literal
+from typing import Dict, Literal, Tuple
 
 from clipper.api.baidu import BaiduTranslationAPI
-from clipper.api.base import BaseTranslationAPI
+from clipper.api.base import (
+    BaseTranslationAPI,
+    TranslationAPIWithAppID,
+    TranslationAPIWithToken,
+)
 from clipper.api.lingocloud import LingoCloudTranslationAPI
 
 __TRANS_API: Dict[str, BaseTranslationAPI] = {
@@ -10,7 +14,19 @@ __TRANS_API: Dict[str, BaseTranslationAPI] = {
 }
 
 
-def create_api(type: Literal["baidu"], *args, **kwargs) -> BaseTranslationAPI:
+def create_api(type: Literal["baidu"], **kwargs) -> BaseTranslationAPI:
     if type not in __TRANS_API:
         raise ValueError(f"Unknown API type: {type}")
-    return __TRANS_API[type](*args, **kwargs)
+
+    def check_secrets(required_keys: Tuple[str, ...]):
+        for key in required_keys:
+            if key not in kwargs:
+                raise ValueError(f"Missing required secret in `api.secrets`: {key}")
+
+    api = __TRANS_API[type]
+    if issubclass(api, TranslationAPIWithAppID):
+        check_secrets(("appid", "appkey"))
+    elif issubclass(api, TranslationAPIWithToken):
+        check_secrets(("token",))
+
+    return api(**kwargs)
