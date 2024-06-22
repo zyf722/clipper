@@ -1,6 +1,6 @@
 import json
-import os
 import re
+from typing import Literal
 
 import pyperclip  # type: ignore
 from rich.text import Text
@@ -33,20 +33,7 @@ class ConfigHandler(PatternMatchingEventHandler):
         footer.update(" Reloading config file...")
 
         try:
-            self.app.config = json.load(open("config.json", "r", encoding="utf-8"))
-            self.app.api = create_api(
-                self.app.config["api"],
-                self.app.config["api.appid"],
-                self.app.config["api.appkey"],
-            )
-            self.app.input_re = [
-                (re.compile(f"({processor['regex']})"), processor["replace"])
-                for processor in self.app.config["processor.input"]
-            ]
-            self.app.output_re = [
-                (re.compile(f"({processor['regex']})"), processor["replace"])
-                for processor in self.app.config["processor.output"]
-            ]
+            self.app.__load_config()
         except Exception as e:
             footer.styles.background = "red"
             footer.update(str(e))
@@ -91,6 +78,27 @@ class ClipperApp(App):
     }
     """
 
+    FOOTER_COLORS = {
+        "info": "dodgerblue",
+        "error": "red",
+        "busy": "gold",
+    }
+
+    def __load_config(self) -> None:
+        self.config = json.load(open("config.json", "r", encoding="utf-8"))
+        self.api = create_api(
+            self.config["api"],
+            **self.config["api.secrets"],
+        )
+        self.input_re = [
+            (re.compile(f"({processor['regex']})"), processor["replace"])
+            for processor in self.config["processor.input"]
+        ]
+        self.output_re = [
+            (re.compile(f"({processor['regex']})"), processor["replace"])
+            for processor in self.config["processor.output"]
+        ]
+
     def compose(self) -> ComposeResult:
         yield Vertical(
             Header(),
@@ -126,20 +134,7 @@ class ClipperApp(App):
 
     def on_mount(self) -> None:
         self.title = f"Clipper {VERSION}"
-        self.config = json.load(open("config.json", "r", encoding="utf-8"))
-        self.api = create_api(
-            self.config["api"],
-            self.config["api.appid"],
-            self.config["api.appkey"],
-        )
-        self.input_re = [
-            (re.compile(f"({processor['regex']})"), processor["replace"])
-            for processor in self.config["processor.input"]
-        ]
-        self.output_re = [
-            (re.compile(f"({processor['regex']})"), processor["replace"])
-            for processor in self.config["processor.output"]
-        ]
+        self.__load_config()
         self.translation_text = ""
         self.cliptext = ""
 
@@ -148,62 +143,54 @@ class ClipperApp(App):
         self.config_observer.schedule(ConfigHandler(self), path=".", recursive=False)
         self.config_observer.start()
 
+        # Footer
+        self.footer: Static = self.query_one("#footer")  # type: ignore
+        self.text: Static = self.query_one("#text")  # type: ignore
+        self.translation: Static = self.query_one("#translation")  # type: ignore
+
+    def __update_footer(
+        self, level: Literal["info", "error", "busy"], message: str
+    ) -> None:
+        self.footer.styles.background = self.FOOTER_COLORS[level]
+        self.footer.update(f" {message}")
+
     @on(Button.Pressed, "#load")
     def load_clipboard(self, _: Button.Pressed) -> None:
-        text: Static = self.query_one("#text")  # type: ignore
-        footer: Static = self.query_one("#footer")  # type: ignore
-
-        footer.styles.background = "dodgerblue"
-        footer.update(" Processing clipboard data...")
+        self.__update_footer("busy", "Processing clipboard data...")
         try:
             # Remove newlines, except for those before sepecial characters
             self.cliptext = pyperclip.paste().strip()
             for regex, repl in self.input_re:
                 self.cliptext = regex.sub(repl, self.cliptext)
 
-            text.update(Text(self.cliptext))
-            footer.update(" Clipboard data loaded")
+            self.text.update(Text(self.cliptext))
+            self.__update_footer("info", "Clipboard data loaded")
         except Exception:
-            text.update(Traceback(theme="github-dark", width=None))
-            footer.styles.background = "red"
-            footer.update(" Error loading clipboard data")
+            self.text.update(Traceback(theme="github-dark", width=None))
+            self.__update_footer("error", "Error loading clipboard data")
+
+    def __copy_to_clipboard(self, text: str) -> None:
+        self.__update_footer("busy", "Copying to clipboard...")
+        try:
+            pyperclip.copy(text)
+            self.__update_footer("info", "Copied to clipboard")
+        except Exception:
+            self.__update_footer("error", "Error copying to clipboard")
 
     @on(Button.Pressed, "#copy")
-    def copy_clipboard(self, _: Button.Pressed) -> None:
-        footer: Static = self.query_one("#footer")  # type: ignore
-
-        footer.styles.background = "dodgerblue"
-        footer.update(" Copying to clipboard...")
-        try:
-            pyperclip.copy(self.cliptext)
-            footer.update(" Copied to clipboard")
-        except Exception:
-            footer.styles.background = "red"
-            footer.update(" Error copying to clipboard")
+    def copy_text(self, _: Button.Pressed) -> None:
+        self.__copy_to_clipboard(self.cliptext)
 
     @on(Button.Pressed, "#copy-translation")
-    def copy_translation_to_clipboard(self, _: Button.Pressed) -> None:
-        footer: Static = self.query_one("#footer")  # type: ignore
-
-        footer.styles.background = "dodgerblue"
-        footer.update(" Copying to clipboard...")
-        try:
-            pyperclip.copy(self.translation_text)
-            footer.update(" Copied to clipboard")
-        except Exception:
-            footer.styles.background = "red"
-            footer.update(" Error copying to clipboard")
+    def copy_translation(self, _: Button.Pressed) -> None:
+        self.__copy_to_clipboard(self.translation_text)
 
     @on(Button.Pressed, "#translate")
     def translate_text(self, _: Button.Pressed) -> None:
-        translation: Static = self.query_one("#translation")  # type: ignore
-        footer: Static = self.query_one("#footer")  # type: ignore
+        self.__update_footer("busy", "Translating...")
 
-        footer.styles.background = "dodgerblue"
-        footer.update(" Translating...")
         if self.cliptext == "":
-            footer.styles.background = "red"
-            footer.update(" No text loaded yet")
+            self.__update_footer("error", "No text loaded yet")
             return
         else:
             try:
@@ -213,30 +200,30 @@ class ClipperApp(App):
                     self.config["api.targetLang"],
                 )
             except Exception as e:
-                footer.styles.background = "red"
-                footer.update(str(e))
+                self.translation.update(Traceback(theme="github-dark", width=None))
+                self.__update_footer("error", str(e))
                 return
 
             for regex, repl in self.output_re:
                 result = regex.sub(repl, result)
 
             self.translation_text = result
-            translation.update(Text(result))
-            footer.update(" Translation complete")
+            self.translation.update(Text(result))
+            self.__update_footer("info", "Translation complete")
 
     @on(Button.Pressed, "#load-copy")
     def load_copy_clipboard(self, event: Button.Pressed) -> None:
         self.load_clipboard(event)
-        self.copy_clipboard(event)
+        self.copy_text(event)
 
     @on(Button.Pressed, "#load-copy-translate")
     def load_copy_translate_clipboard(self, event: Button.Pressed) -> None:
         self.load_clipboard(event)
-        self.copy_clipboard(event)
+        self.copy_text(event)
         self.translate_text(event)
 
     @on(Button.Pressed, "#load-translate-copy-translation")
     def load_translate_copy_translation_clipboard(self, event: Button.Pressed) -> None:
         self.load_clipboard(event)
         self.translate_text(event)
-        self.copy_translation_to_clipboard(event)
+        self.copy_translation(event)
