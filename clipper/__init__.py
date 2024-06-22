@@ -27,20 +27,13 @@ class ConfigHandler(PatternMatchingEventHandler):
         super().__init__(patterns=["config.json"])
 
     def on_modified(self, event) -> None:
-        footer: Static = self.app.query_one("#footer")  # type: ignore
-
-        footer.styles.background = "gold"
-        footer.update(" Reloading config file...")
-
+        self.app._update_footer("busy", "Reloading config file...")
         try:
-            self.app.__load_config()
+            self.app._load_config()
         except Exception as e:
-            footer.styles.background = "red"
-            footer.update(str(e))
+            self.app._update_footer("error", str(e))
             return
-
-        footer.styles.background = "dodgerblue"
-        footer.update(" Config file reloaded")
+        self.app._update_footer("info", "Config file reloaded")
 
 
 class ClipperApp(App):
@@ -84,7 +77,7 @@ class ClipperApp(App):
         "busy": "gold",
     }
 
-    def __load_config(self) -> None:
+    def _load_config(self) -> None:
         self.config = json.load(open("config.json", "r", encoding="utf-8"))
         self.api = create_api(
             self.config["api"],
@@ -134,7 +127,7 @@ class ClipperApp(App):
 
     def on_mount(self) -> None:
         self.title = f"Clipper {VERSION}"
-        self.__load_config()
+        self._load_config()
         self.translation_text = ""
         self.cliptext = ""
 
@@ -148,7 +141,7 @@ class ClipperApp(App):
         self.text: Static = self.query_one("#text")  # type: ignore
         self.translation: Static = self.query_one("#translation")  # type: ignore
 
-    def __update_footer(
+    def _update_footer(
         self, level: Literal["info", "error", "busy"], message: str
     ) -> None:
         self.footer.styles.background = self.FOOTER_COLORS[level]
@@ -156,7 +149,7 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#load")
     def load_clipboard(self, _: Button.Pressed) -> None:
-        self.__update_footer("busy", "Processing clipboard data...")
+        self._update_footer("busy", "Processing clipboard data...")
         try:
             # Remove newlines, except for those before sepecial characters
             self.cliptext = pyperclip.paste().strip()
@@ -164,18 +157,18 @@ class ClipperApp(App):
                 self.cliptext = regex.sub(repl, self.cliptext)
 
             self.text.update(Text(self.cliptext))
-            self.__update_footer("info", "Clipboard data loaded")
+            self._update_footer("info", "Clipboard data loaded")
         except Exception:
             self.text.update(Traceback(theme="github-dark", width=None))
-            self.__update_footer("error", "Error loading clipboard data")
+            self._update_footer("error", "Error loading clipboard data")
 
     def __copy_to_clipboard(self, text: str) -> None:
-        self.__update_footer("busy", "Copying to clipboard...")
+        self._update_footer("busy", "Copying to clipboard...")
         try:
             pyperclip.copy(text)
-            self.__update_footer("info", "Copied to clipboard")
+            self._update_footer("info", "Copied to clipboard")
         except Exception:
-            self.__update_footer("error", "Error copying to clipboard")
+            self._update_footer("error", "Error copying to clipboard")
 
     @on(Button.Pressed, "#copy")
     def copy_text(self, _: Button.Pressed) -> None:
@@ -187,10 +180,10 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#translate")
     def translate_text(self, _: Button.Pressed) -> None:
-        self.__update_footer("busy", "Translating...")
+        self._update_footer("busy", "Translating...")
 
         if self.cliptext == "":
-            self.__update_footer("error", "No text loaded yet")
+            self._update_footer("error", "No text loaded yet")
             return
         else:
             try:
@@ -201,7 +194,7 @@ class ClipperApp(App):
                 )
             except Exception as e:
                 self.translation.update(Traceback(theme="github-dark", width=None))
-                self.__update_footer("error", str(e))
+                self._update_footer("error", str(e))
                 return
 
             for regex, repl in self.output_re:
@@ -209,7 +202,7 @@ class ClipperApp(App):
 
             self.translation_text = result
             self.translation.update(Text(result))
-            self.__update_footer("info", "Translation complete")
+            self._update_footer("info", "Translation complete")
 
     @on(Button.Pressed, "#load-copy")
     def load_copy_clipboard(self, event: Button.Pressed) -> None:
