@@ -1,8 +1,6 @@
 # clipper
 Originally made for essay-reading purpose (now you can also utilize it to get texts in slides translated), clipper is a simple [TUI-based](https://github.com/Textualize/textual) Python app to extract text from clipboard and translate it using extensible translation services, with custom RegEx pre- and post-processing support.
 
-[Baidu Translate API](https://fanyi-api.baidu.com/) is provided as a built-in translation service.
-
 ![Screenshot](./assets/image.png)
 
 ## Installation & Usage
@@ -16,7 +14,7 @@ poetry install
 cp config.example.json config.json
 ```
 
-After installing dependencies, open `config.json` and fill in the necessary information.
+After installing dependencies, open `config.json` and fill in the necessary information. Specifically, `api.secrets` might differ depending on the translation service you use - Check the table [below](#built-in-apis) for more information.
 
 The config file is validated by [json-schema](https://json-schema.org/). See [`config.schema.json`](./config.schema.json) for the schema.
 
@@ -36,12 +34,21 @@ There are four buttons with different purposes:
 
 The rest three are just the (partial) combination of them.
 
-### Add Custom Translation API
-To add a custom translation API, you need to extend the `BaseTranslationAPI` class in [`clipper/api/base.py`](./clipper/api/base.py) and implement the `translate` method.
+### Translation API
+#### Built-in APIs
+| ID | Provider | Name | Required Secrets | Docs | Note |
+| :-: | :------: | :--: | :--------------: | :--: | :---: |
+| `baidu` | Baidu | General Translate API | `appid`, `appkey` | [Link](https://fanyi-api.baidu.com/doc/21) (Simplified Chinese) | - |
+| `lingocloud` | LingoCloud | Translate API | `token` | [Link](https://docs.caiyunapp.com/lingocloud-api/) (Simplified Chinese) | - |
 
-Then, you can add the new API to `create_api` method in [`clipper/api/__init__.py`](./clipper/api/__init__.py).
+Set `api` in your config file to the ID of the translation API you want to use, and `api.secrets` to the corresponding secrets required.
 
-Finally, set `api` in your config file to the name of your newly-added API - make sure the name is the same as parameter `type` in `create_api`.
+#### Add Custom API
+To add a custom translation API, you need to extend the [`BaseTranslationAPI`](./clipper/api/base.py#L9) class (or [`TranslationAPIWithAppID`](./clipper/api/base.py#L40) / [`TranslationAPIWithToken`](./clipper/api/base.py#L53) if secrets are required) and implement the `translate` method.
+
+Then, you can add the new API to [`__TRANS_API`](./clipper/api/__init__.py#L11) dict. You may also want to add its ID to the type hints of `type` parameter in [`create_api`](./clipper/api/__init__.py#L17) and [`enum`](./config.schema.json#L9) in config schema to get better intellisense support.
+
+Finally, set `api` and `api.secrets` in your config file and everything should work.
 
 ### RegEx Pre- and Post-Processing
 Clipper supports custom RegEx pre- and post-processing. You can add your own RegEx and replacement in `processor.input` and `processor.output` in the config file.
