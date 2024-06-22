@@ -16,7 +16,7 @@ from watchdog.observers import Observer
 
 from clipper.api import create_api
 
-VERSION = "v0.2.0"
+VERSION = "v0.3.0"
 
 
 class ConfigHandler(PatternMatchingEventHandler):
