@@ -6,10 +6,10 @@
             "type": "string",
             "anyOf": [
                 {
-                    "enum": ["baidu"]
+                    "enum": ["baidu", "lingocloud"]
                 }
             ],
-            "description": "The translation API to use. Currently only 'baidu' is supported."
+            "description": "The translation API to use."
         },
         "api.appid": {
             "$ref": "#/definitions/non-empty-string",
