@@ -1,5 +1,7 @@
 import json
+import os
 import re
+import sys
 from typing import Literal
 
 import pyperclip  # type: ignore
@@ -100,6 +102,7 @@ class ClipperApp(App):
                 Button("Copy", id="copy", variant="primary"),
                 Button("Translate", id="translate", variant="primary"),
                 Button("Copy Translation", id="copy-translation", variant="primary"),
+                Button("Show Config", id="show-config"),
                 classes="buttons",
             ),
             Horizontal(
@@ -220,3 +223,14 @@ class ClipperApp(App):
         self.load_clipboard(event)
         self.translate_text(event)
         self.copy_translation(event)
+
+    @on(Button.Pressed, "#show-config")
+    def show_config(self, _: Button.Pressed) -> None:
+        if sys.platform == "win32":
+            os.startfile("config.json")
+        else:
+            import subprocess
+
+            subprocess.call(
+                (f"{'' if sys.platform == 'darwin' else 'xdg-'}open", "config.json")
+            )
