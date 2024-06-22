@@ -14,8 +14,6 @@ class BaseTranslationAPI(ABC):
     overwrite the class variable `endpoint` and implement the `translate` method.
     """
 
-    appid: str
-    appkey: str
     session: Session = field(default_factory=Session, init=False)
     endpoint: ClassVar[str] = ""
 
@@ -36,6 +34,31 @@ class BaseTranslationAPI(ABC):
             str: The translated text.
         """
         raise NotImplementedError
+
+
+@dataclass
+class TranslationAPIWithAppID(BaseTranslationAPI, ABC):
+    """
+    Base class for translation APIs that require an app ID and app key.
+
+    To create a new translation API in this category, subclass this class,
+    overwrite the class variable `endpoint` and implement the `translate` method.
+    """
+
+    appid: str
+    appkey: str
+
+
+@dataclass
+class TranslationAPIWithToken(BaseTranslationAPI, ABC):
+    """
+    Base class for translation APIs that require a token.
+
+    To create a new translation API in this category, subclass this class,
+    overwrite the class variable `endpoint` and implement the `translate` method.
+    """
+
+    token: str
 
 
 class TranslationError(Exception):

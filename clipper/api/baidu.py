@@ -2,10 +2,10 @@ import hashlib
 import random
 import time
 
-from clipper.api.base import BaseTranslationAPI, TranslationError
+from clipper.api.base import TranslationAPIWithAppID, TranslationError
 
 
-class BaiduTranslationAPI(BaseTranslationAPI):
+class BaiduTranslationAPI(TranslationAPIWithAppID):
     """
     Baidu translation API.
     """
