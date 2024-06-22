@@ -14,7 +14,7 @@ __TRANS_API: Dict[str, BaseTranslationAPI] = {
 }
 
 
-def create_api(type: Literal["baidu"], **kwargs) -> BaseTranslationAPI:
+def create_api(type: Literal["baidu", "lingocloud"], **kwargs) -> BaseTranslationAPI:
     if type not in __TRANS_API:
         raise ValueError(f"Unknown API type: {type}")
 
