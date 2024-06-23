@@ -26,13 +26,18 @@ Then, you can run the app by:
 poetry run clipper
 ```
 
-There are four buttons with different purposes:
+There are four blue buttons representing main functions of the app:
 - `Load`: load text from clipboard, removing all line breaks
 - `Copy`: copy the processed text by `Load` to the clipboard
 - `Translate`: translate the loaded text using the selected translation service
-- `Copy Translated`: copy the translated text to the clipboard
+- `Copy Translation`: copy the translated text to the clipboard
 
-The rest three are just the (partial) combination of them.
+There are also three green buttons, which are just shortcuts to some combinations of the blue buttons:
+- `Load & Copy`
+- `Load, Copy & Translate`
+- `Load, Translate & Copy Translation`
+
+Apart from above, there is a gray button to open `config.json` in your default text editor.
 
 ### Translation API
 #### Built-in APIs
