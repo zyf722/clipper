@@ -15,7 +15,7 @@ from watchdog.observers import Observer
 
 from clipper.config import Config, Regex
 
-VERSION = "v0.3.0"
+VERSION = "v0.4.0"
 CONFIG_FILE = "userconfig.py"
 
 
