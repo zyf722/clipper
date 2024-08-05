@@ -11,12 +11,15 @@ To install, run the following commands after cloning the repository:
 ```bash
 poetry lock
 poetry install
-cp config.example.json config.json
+cp userconfig.example.py userconfig.py
 ```
 
-After installing dependencies, open `config.json` and fill in the necessary information. Specifically, `api.secrets` might differ depending on the translation service you use - Check the table [below](#built-in-apis) for more information.
+After installing dependencies, open `userconfig.py` and create your own `config` object based on the example in the file. Check [`clipper.config`](./clipper/config/__init__.py) for full configuration options.
 
-The config file is validated by [json-schema](https://json-schema.org/). See [`config.schema.json`](./config.schema.json) for the schema.
+> [!CAUTION]
+> Clipper won't check whether the config file is valid or contains malicious code.
+>
+> Please be cautious when running the app with a custom config file.
 
 Hot-reloading of the config file is supported. You can modify the config file while the app is running, and it will be automatically reloaded.
 
@@ -37,45 +40,47 @@ There are also three green buttons, which are just shortcuts to some combination
 - `Load, Copy & Translate`
 - `Load, Translate & Copy Translation`
 
-Apart from above, there is a gray button to open `config.json` in your default text editor.
+Apart from above, there is a gray button to focus `userconfig.py` in your file explorer in case you want to open it with a text editor and modify it.
 
 ### Translation API
 #### Built-in APIs
-| ID | Provider | Name | Required Secrets | Docs | Note |
-| :-: | :------: | :--: | :--------------: | :--: | :---: |
-| `baidu` | Baidu | General Translate API | `appid`, `appkey` | [Link](https://fanyi-api.baidu.com/doc/21) (Simplified Chinese) | - |
-| `lingocloud` | LingoCloud | Translate API | `token` | [Link](https://docs.caiyunapp.com/lingocloud-api/) (Simplified Chinese) | - |
+| Class | Provider | Type | Docs | Note |
+| :-: | :------: | :--: | :--: | :---: |
+| [`BaiduTranslationAPI`](./clipper/api/baidu.py) | Baidu General Translate API | `TranslationAPIWithAppID` | [Link](https://fanyi-api.baidu.com/doc/21) (Simplified Chinese) | - |
+| [`LingoCloudTranslationAPI`](./clipper/api/lingocloud.py) | LingoCloud Translate API | `TranslationAPIWithToken` | [Link](https://docs.caiyunapp.com/lingocloud-api/) (Simplified Chinese) | - |
 
-Set `api` in your config file to the ID of the translation API you want to use, and `api.secrets` to the corresponding secrets required.
+Set `api` in your config object using the class of the translation API you want to use, along with corresponding secrets based on its type to initialize it.
+
+Continue reading to gain more information on API types and how to add custom APIs.
 
 #### Add Custom API
 To add a custom translation API, you need to extend the [`BaseTranslationAPI`](./clipper/api/base.py#L9) class (or [`TranslationAPIWithAppID`](./clipper/api/base.py#L40) / [`TranslationAPIWithToken`](./clipper/api/base.py#L53) if secrets are required) and implement the `translate` method.
 
-Then, you can add the new API to [`__TRANS_API`](./clipper/api/__init__.py#L11) dict. You may also want to add its ID to the type hints of `type` parameter in [`create_api`](./clipper/api/__init__.py#L17) and [`enum`](./config.schema.json#L9) in config schema to get better intellisense support.
-
-Finally, set `api` and `api.secrets` in your config file and everything should work.
+Then, import your API class and set `api` property in the config object using your API class and secrets (if required). Everything should work after hot-reloading.
 
 ### RegEx Pre- and Post-Processing
-Clipper supports custom RegEx pre- and post-processing. You can add your own RegEx and replacement in `processor.input` and `processor.output` in the config file.
+Clipper supports custom RegEx pre- and post-processing. You can add your own RegEx and replacement in `processor.input_re` and `processor.output_re` in the config object.
 
-For example, to keep list structure in PDF slides and convert it to Markdown style, you can add the following to `config.json`:
+For example, to keep list structure in PDF slides and convert it to Markdown style, you can add the following to `userconfig.py`:
 
-```json
-"processor.input": [
-    {
-        "regex": "(\r)*\n(?![•⚫➢])",
-        "replace": " "
-    }
-],
-"processor.output": [
-    {
-        "regex": "(^|\n)[•⚫➢] ",
-        "replace": "\\2- "
-    }
-]
+```py
+from clipper.config import Config, ProcessorConfig, Regex
+
+config = Config(
+    # Other properties are omitted ...
+    processor=ProcessorConfig(
+        input_re=[
+            Regex(pattern="(\r)*\n(?![•⚫➢])", repl=" "),
+        ],
+        output_re=[
+            Regex(pattern="(^|\n)[•⚫➢] ", repl="\\1- "),
+        ],
+    ),
+    # ...
+)
 ```
 
-This will replace all line breaks not followed by `•`, `⚫`, or `➢` with a space, and replace all `•`, `⚫`, or `➢` followed by a space with `- `.
+This will replace all line breaks not followed by `•`, `⚫`, or `➢` with a space in the input, and replace all `•`, `⚫`, or `➢` followed by a space with `- ` in the output.
 
 ## License
 [AGPLv3](./LICENSE)
