@@ -1,12 +1,11 @@
-import json
+import importlib
 import os
-import re
-import sys
-from typing import Literal
+from typing import List, Literal
 
 import pyperclip  # type: ignore
 from rich.text import Text
 from rich.traceback import Traceback
+from showinfm import show_in_file_manager
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -14,9 +13,10 @@ from textual.widgets import Button, Header, Rule, Static
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
-from clipper.api import create_api
+from clipper.config import Config, Regex
 
 VERSION = "v0.3.0"
+CONFIG_FILE = "userconfig.py"
 
 
 class ConfigHandler(PatternMatchingEventHandler):
@@ -26,7 +26,7 @@ class ConfigHandler(PatternMatchingEventHandler):
 
     def __init__(self, app: "ClipperApp") -> None:
         self.app = app
-        super().__init__(patterns=["config.json"])
+        super().__init__(patterns=[CONFIG_FILE])
 
     def on_modified(self, event) -> None:
         self.app._update_footer("busy", "Reloading config file...")
@@ -80,19 +80,9 @@ class ClipperApp(App):
     }
 
     def _load_config(self) -> None:
-        self.config = json.load(open("config.json", "r", encoding="utf-8"))
-        self.api = create_api(
-            self.config["api"],
-            **self.config["api.secrets"],
-        )
-        self.input_re = [
-            (re.compile(f"({processor['regex']})"), processor["replace"])
-            for processor in self.config["processor.input"]
-        ]
-        self.output_re = [
-            (re.compile(f"({processor['regex']})"), processor["replace"])
-            for processor in self.config["processor.output"]
-        ]
+        instance = importlib.import_module(CONFIG_FILE.replace(".py", ""))
+        importlib.reload(instance)
+        self.config: Config = instance.config
 
     def compose(self) -> ComposeResult:
         yield Vertical(
@@ -150,14 +140,20 @@ class ClipperApp(App):
         self.footer.styles.background = self.FOOTER_COLORS[level]
         self.footer.update(f" {message}")
 
+    def _replace_using_regex(self, string: str, regex_list: List[Regex]):
+        for regex in regex_list:
+            string = regex.pattern.sub(regex.repl, string)
+        return string
+
     @on(Button.Pressed, "#load")
     def load_clipboard(self, _: Button.Pressed) -> None:
         self._update_footer("busy", "Processing clipboard data...")
         try:
             # Remove newlines, except for those before sepecial characters
-            self.cliptext = pyperclip.paste().strip()
-            for regex, repl in self.input_re:
-                self.cliptext = regex.sub(repl, self.cliptext)
+            self.cliptext = self._replace_using_regex(
+                string=pyperclip.paste().strip(),
+                regex_list=self.config.processor.input_re,
+            )
 
             self.text.update(Text(self.cliptext))
             self._update_footer("info", "Clipboard data loaded")
@@ -190,18 +186,19 @@ class ClipperApp(App):
             return
         else:
             try:
-                result = self.api.translate(
+                result = self.config.api.translate(
                     self.cliptext,
-                    self.config["api.originalLang"],
-                    self.config["api.targetLang"],
+                    self.config.lang.original,
+                    self.config.lang.target,
                 )
             except Exception as e:
                 self.translation.update(Traceback(theme="github-dark", width=None))
                 self._update_footer("error", str(e))
                 return
 
-            for regex, repl in self.output_re:
-                result = regex.sub(repl, result)
+            result = self._replace_using_regex(
+                string=result, regex_list=self.config.processor.output_re
+            )
 
             self.translation_text = result
             self.translation.update(Text(result))
@@ -226,11 +223,4 @@ class ClipperApp(App):
 
     @on(Button.Pressed, "#show-config")
     def show_config(self, _: Button.Pressed) -> None:
-        if sys.platform == "win32":
-            os.startfile("config.json")
-        else:
-            import subprocess
-
-            subprocess.call(
-                (f"{'' if sys.platform == 'darwin' else 'xdg-'}open", "config.json")
-            )
+        show_in_file_manager(os.path.abspath(CONFIG_FILE))
